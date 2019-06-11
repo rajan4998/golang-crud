@@ -2,13 +2,16 @@ package main
 
 import (
 	// "fmt"
+	"database/sql"
 	"encoding/json"
 	"log"
 	"net/http"
 
 	// "reflect"
+
 	"strconv"
 
+	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/mux"
 )
 
@@ -18,13 +21,11 @@ type Book struct {
 	Title  string
 	Author string
 	Year   string
-	// ID string `json:id`
-	// Title string `json:title`
-	// Author string `json:title`
-	// Year string `json:year`
 }
 
 var books []Book
+
+// var db *sql.DB
 
 func main() {
 	router := mux.NewRouter()
@@ -36,6 +37,7 @@ func main() {
 		Book{ID: 5, Title: "Book 4", Author: "Author 4", Year: "4993"},
 	)
 
+	//router starts
 	router.HandleFunc("/books", getBooks).Methods("GET")
 	router.HandleFunc("/books/{id}", getBook).Methods("GET")
 	router.HandleFunc("/books", addBook).Methods("POST")
@@ -46,7 +48,35 @@ func main() {
 }
 
 func getBooks(w http.ResponseWriter, r *http.Request) {
-	json.NewEncoder(w).Encode(books)
+
+	var book Book
+	books = []Book{}
+
+	//creating db connection
+	db, err := sql.Open("mysql", "root:123456@tcp(localhost:3306)/db_books")
+
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+
+	defer db.Close()
+
+	results, err := db.Query("SELECT id,title,author,year FROM books")
+
+	if err != nil {
+		panic(err.Error())
+	}
+	defer results.Close()
+	log.Println(results)
+
+	for results.Next() {
+		err = results.Scan(&book.ID, &book.Title, &book.Author, &book.Year)
+		if err != nil {
+			panic(err.Error())
+		}
+		log.Printf(book.Title)
+	}
+	// json.NewEncoder(w).Encode(books)
 	log.Println("Get all books")
 }
 
